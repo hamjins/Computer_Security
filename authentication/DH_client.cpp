@@ -75,7 +75,7 @@ int main ( int argc, char* argv[] ){
 
 	Integer q("0xF518AA8781A8DF278ABA4E7D64B7CB9D49462353");
 
-      std::string reply;
+      std::string encodeReply, reply;
       AutoSeededRandomPool rndA;
       DH dhA;
       dhA.AccessGroupParameters().Initialize(p, q, g);
@@ -131,7 +131,7 @@ int main ( int argc, char* argv[] ){
       try
    {
      char tmp[101], erase[101];
-     std::string userInfo, sendInfo, base64encodedciphertext; //처음 CLIENT가 쓰는 유저 INFO 
+     std::string userInfo, sendInfo, base64decryptedciphertext, base64encodedciphertext; //처음 CLIENT가 쓰는 유저 INFO 
      std::cout << "username: ";
      scanf("%s",tmp); userInfo = tmp;
 
@@ -152,15 +152,25 @@ int main ( int argc, char* argv[] ){
      //client_socket에 들어간 id, pw를 Server에 보냄
      client_socket << base64encodedciphertext;
   
-     //Server에서 보낸 제곱값 받음
-     client_socket >> reply;
+    //Server에서 보낸 제곱값 받음
+     client_socket >> encodeReply;
+     if(encodeReply == "false" || encodeReply == "falsefalse") {
+      std::cout << "인증 실패!" << "\n";
+      return 0;
+      }
+
+     CryptoPP::StringSource(encodeReply, true, new CryptoPP::Base64Decoder(new CryptoPP::StringSink( base64decryptedciphertext)));
+
+     CryptoPP::AES::Decryption aesDecryption (key, aesKeyLength);
+     CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption (aesDecryption, iv);
+
+     CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(reply));
+     stfDecryptor.Put(reinterpret_cast<const unsigned char*>(base64decryptedciphertext.c_str()), base64decryptedciphertext.size());
+     stfDecryptor.MessageEnd();
+
    }
       catch ( SocketException& ) {}
 
-      if(reply == "false" || reply == "falsefalse") {
-   std::cout << "인증 실패!" << "\n";
-   return 0;
-      }
       std::cout << "We received this response from the server: " << reply << "\n";
 
     }
