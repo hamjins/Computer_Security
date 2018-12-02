@@ -126,7 +126,7 @@ int main ( int argc, char* argv[] )
        {
          while ( true )
       {
-        std::string data, recvdata, base64decryptedciphertext, isCorrect = "";
+        std::string data, recvdata, base64encodedciphertext, base64decryptedciphertext, isCorrect = "";
         int number;
    
       ///////////////////////////////////////////////////////
@@ -173,9 +173,19 @@ int main ( int argc, char* argv[] )
           std::cout << "client에게 보낼 값을 입력하세요: ";
           scanf("%d",&number);   //number값 입력
           number*=number;
-         
-          new_sock << std::to_string(number);    //number 제곱한 값 string으로 넘겨줌
-          //이 때, new_sock << 한 만큼 모두 합쳐져서 client에게 보내짐
+          std::string encodedStringInteger, stringInteger = std::to_string(number);
+
+	  CryptoPP::AES::Encryption aesEncryption (key, aesKeyLength);
+    	  CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption (aesEncryption, iv);
+
+     	  CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink(encodedStringInteger));
+
+  	  stfEncryptor.Put(reinterpret_cast<const unsigned char*>(stringInteger.c_str()), stringInteger.length()+1);
+    	  stfEncryptor.MessageEnd();
+
+   	  CryptoPP::StringSource(encodedStringInteger, true, new CryptoPP::Base64Encoder(new CryptoPP::StringSink(base64encodedciphertext)));
+     	
+    	  new_sock << base64encodedciphertext;
         } else {
           new_sock << isCorrect; //인증에 실패하였음을 client에 알림
         }
